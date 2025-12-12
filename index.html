@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>도전! 농심천심 마스터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #F3F4F6; }
+        
+        /* 도장 스타일 */
+        .stamp-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            width: 90px; height: 90px;
+            border: 3px solid #DC2626;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.95);
+            color: #DC2626;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: stamp-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .stamp-text-main { font-size: 1.6rem; font-weight: 900; line-height: 1.1; letter-spacing: -1px; }
+
+        /* 대형 도장 */
+        .big-stamp-circle {
+            width: 180px; height: 180px;
+            border: 8px solid white;
+            border-radius: 50%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transform: rotate(-15deg);
+            animation: stamp-pop-center 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(220, 38, 38, 0.9); color: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .big-stamp-text { font-size: 2.5rem; font-weight: 900; line-height: 1.2; }
+
+        @keyframes stamp-pop { 0% { transform: translate(-50%, -50%) scale(2) rotate(0deg); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-15deg); opacity: 1; } }
+        @keyframes stamp-pop-center { 0% { transform: scale(2) rotate(0deg); opacity: 0; } 100% { transform: scale(1) rotate(-15deg); opacity: 1; } }
+
+        .grayscale { filter: grayscale(100%); opacity: 0.5; }
+        .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: white; position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
+        
+        .option-label {
+            display: block; padding: 14px; border: 2px solid #E5E7EB; border-radius: 12px;
+            margin-bottom: 8px; cursor: pointer; transition: all 0.2s; font-size: 15px;
+        }
+        .option-input:checked + .option-label {
+            border-color: #16A34A; background-color: #F0FDF4; color: #166534; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(22, 163, 74, 0.1);
+        }
+        .option-input { display: none; }
+        
+        .learning-content h3 { 
+            font-size: 1.25rem; font-weight: 800; color: #15803d; 
+            margin-top: 1.8rem; margin-bottom: 0.8rem; 
+            border-left: 4px solid #15803d; padding-left: 10px;
+        }
+        .learning-content p { margin-bottom: 1rem; line-height: 1.65; color: #374151; font-size: 1.05rem; }
+        .learning-content ul { list-style-type: disc; padding-left: 1.2rem; margin-bottom: 1.2rem; }
+        .learning-content li { margin-bottom: 0.5rem; color: #4B5563; line-height: 1.5; }
+        .learning-content strong { color: #000; background: linear-gradient(180deg, rgba(255,255,255,0) 60%, #bbf7d0 60%); }
+        .highlight-box { background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 15px; margin: 15px 0; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div id="app" class="mobile-container flex flex-col"></div>
+
+    <script>
+        // ==========================================
+        // 데이터셋
+        // ==========================================
+        const MISSIONS = [
+            { 
+                id: 1, 
+                title: "1. 農가치 캠페인", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 교육·체험을 통한 국민적 공감대 형성
+                    </div>
+                    <h3>🌾 우리農 건강 365 캠페인</h3>
+                    <p>건강 및 식(食) 전문가와 함께 국민들에게 <strong>올바른 먹거리 정보</strong>를 제공하고, 우리 농산물의 우수성을 알리는 캠페인입니다.</p>
+                    <h3>🏫 스쿨팜(School Farm)</h3>
+                    <p>학교 내 유휴부지에 텃밭을 조성하여 학생들이 직접 작물을 심고 가꾸며 <strong>생명의 소중함과 농업의 가치</strong>를 체험하는 교육 프로그램입니다. (지자체-교육청 MOU)</p>
+                    <h3>🚜 주말농장의 진화</h3>
+                    <p>단순 체험을 넘어 <strong>'농산물 정기배송'</strong>이 결합된 형태로 발전했습니다. (예: BTS 지민이 논 등 스타 마케팅 활용)</p>
+                `,
+                quiz: [{q: "'우리農 건강 365 캠페인'의 주요 내용은?", a: "올바른 먹거리 정보 제공", o: ["올바른 먹거리 정보 제공", "농기계 수리", "해외여행 지원"]}, {q: "스쿨팜(School Farm)은 학교 내 유휴부지에 텃밭을 조성하는 사업이다?", a: "O", o: ["O", "X"]}] 
+            },
+            { 
+                id: 2, 
+                title: "2. 農가치 국민참여", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 일손돕기·재능기부 등 국민 참여 확대
+                    </div>
+                    <h3>🤝 농촌일손·재능나눔 국민참여단</h3>
+                    <p>일손이 부족한 농촌을 돕기 위해 신설된 조직입니다. 농협은 개인, 기업, 단체의 수요를 파악하여 연결해주는 <strong>중개 플랫폼 역할</strong>을 수행합니다.</p>
+                    <h3>🎓 대학생 재능기부 (전공 연계)</h3>
+                    <ul>
+                        <li><strong>미용학과:</strong> 어르신 염색 및 커트 봉사</li>
+                        <li><strong>미술학과:</strong> 마을 벽화 그리기</li>
+                        <li><strong>의료계열:</strong> 건강 검진 및 물리치료</li>
+                    </ul>
+                `,
+                quiz: [{q: "농촌 일손돕기와 재능나눔을 위한 신설 조직은?", a: "국민참여단", o: ["국민참여단", "해외봉사단", "관광홍보단"]}, {q: "농협은 국민참여단 활동에서 중개 플랫폼 역할을 한다?", a: "O", o: ["O", "X"]}] 
+            },
+            { 
+                id: 3, 
+                title: "3. 농산물 소비촉진", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 범농협 통합 소비촉진 운동 전개
+                    </div>
+                    <h3>🍚 밥심천심(天心)</h3>
+                    <p>'밥심이 곧 천심이다'라는 슬로건으로 쌀 소비 촉진 운동을 전개합니다.</p>
+                    
+                    <h3>📅 Day 마케팅 활성화</h3>
+                    <ul>
+                        <li><strong>3.14 백설기 데이</strong></li>
+                        <li><strong>8.18 쌀의 날</strong> (米를 분해하면 八十八)</li>
+                        <li><strong>11.11 가래떡 데이</strong> (농업인의 날)</li>
+                    </ul>
+
+                    <h3>💚 착한소비 캠페인</h3>
+                    <p>과잉 생산되거나 재해 피해를 입은 농산물을 사회적 이슈화하여 단기간에 집중 판매하는 운동입니다.</p>
+                `,
+                quiz: [{q: "쌀 소비 촉진 슬로건으로 '밥심'은 곧 무엇이라 했나?", a: "천심(天心)", o: ["천심(天心)", "민심", "뚝심"]}, {q: "과잉생산 농산물을 사회적 이슈화하여 판매하는 것은?", a: "착한소비", o: ["착한소비", "과소비", "명품소비"]}] 
+            },
+            { 
+                id: 4, 
+                title: "4. 인력공급 고도화", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 영농인력 공급 체계적 확대
+                    </div>
+                    <h3>🚜 농작업 대행 확대</h3>
+                    <p>농협 직원이 직접 농작업을 대행하던 것에서 나아가, <strong>농업인도 참여</strong>하는 형태로 확대하여 효율을 높입니다.</p>
+                    
+                    <h3>✈️ 공공형 계절근로 활성화</h3>
+                    <p>농번기 인력난 해소를 위해 외국인 근로자(E-8) 제도를 개선하고, 농협이 운영 주체가 되어 <strong>농가 경영비를 절감</strong>합니다.</p>
+                `,
+                quiz: [{q: "농작업 대행사업은 농업인도 참여하여 확대된다?", a: "O", o: ["O", "X"]}, {q: "농번기 인력난 해소를 위한 외국인 근로자 관련 사업은?", a: "공공형 계절근로", o: ["공공형 계절근로", "워킹홀리데이", "유학사업"]}] 
+            },
+            { 
+                id: 5, 
+                title: "5. 미래농업 선도", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 스마트팜 확산 및 농외소득 증대
+                    </div>
+                    <h3>📱 보급형 스마트팜</h3>
+                    <p>대규모 시설이 아닌, <strong>중소농과 청년농업인</strong>이 쉽게 도입할 수 있는 실용 중심의 보급형 모델을 확산합니다. (25년까지 1,000개 목표)</p>
+                    
+                    <h3>☀️ 태양광 발전사업</h3>
+                    <p>농가의 농외소득 증대를 위해 유휴 부지를 활용한 태양광 발전 사업을 지원합니다. 농협은 우수 시공업체 선정 및 금융 컨설팅을 제공합니다.</p>
+                `,
+                quiz: [{q: "농협이 확산하려는 중소농/청년농용 모델은?", a: "보급형 스마트팜", o: ["보급형 스마트팜", "초대형 스마트팜", "지하 스마트팜"]}, {q: "2025년까지 보급형 스마트팜 1,000개 보급이 목표다?", a: "O", o: ["O", "X"]}] 
+            },
+            { 
+                id: 6, 
+                title: "6. 지역농업 발전", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 산지 경쟁력 강화 및 기후변화 대응
+                    </div>
+                    <h3>🏭 APC 스마트화·현대화</h3>
+                    <p>산지유통센터(APC)에 고도화된 자동화 설비를 도입하여 경쟁력을 높입니다. (27년까지 스마트 APC 100개소 목표)</p>
+                    
+                    <h3>🌡️ 기후변화 대응</h3>
+                    <p>이상기후 피해 예방 시설(방상팬, LED보광등)을 지원하고, 아열대 작물 등 지역 여건에 맞는 <strong>대체 품종을 육성</strong>합니다.</p>
+                `,
+                quiz: [{q: "산지유통센터(APC) 경쟁력 강화를 위한 방향은?", a: "스마트화·현대화", o: ["스마트화·현대화", "소형화", "수동화"]}, {q: "2027년까지 스마트 APC를 100개소로 확대한다?", a: "O", o: ["O", "X"]}] 
+            },
+            { 
+                id: 7, 
+                title: "7. 생활인구 창출", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 농촌여행 활성화를 통한 활력 제고
+                    </div>
+                    <h3>🚌 지자체 협력 농촌여행</h3>
+                    <p>지자체와 MOU를 맺고 관광 인프라와 인센티브를 지원받습니다. 농협은 <strong>도시민 모객과 홍보</strong>를 담당합니다.</p>
+                    
+                    <h3>💸 반값 여행 & 방문 주간</h3>
+                    <p>여행 비용 부담을 줄여주는 '농촌 반값 여행' 사업을 추진하고, 수확철이나 비수기에 맞춰 '농촌 방문 주간'을 운영합니다.</p>
+                `,
+                quiz: [{q: "농촌여행 활성화를 위해 농협이 협력(MOU)하는 기관은?", a: "지자체", o: ["지자체", "국세청", "법원"]}, {q: "여행 비용 부담을 줄여주는 대표 사업은?", a: "농촌 반값여행", o: ["농촌 반값여행", "무료 세계일주", "귀족여행"]}] 
+            },
+            { 
+                id: 8, 
+                title: "8. 귀농·귀촌 활성화", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 농촌 체류 확산 및 정착 지원
+                    </div>
+                    <h3>🏡 농촌에서 살아보기</h3>
+                    <p>귀농 전 약 1년간 농촌에 거주하며 기술을 배우고 문화를 체험하는 프로그램입니다. ('그린대로' 정책 연계)</p>
+                    
+                    <h3>🗓️ 4도 3촌 (4都3村)</h3>
+                    <p>도시에서 4일, 농촌에서 3일을 보내는 라이프스타일을 확산합니다. 이를 위해 '농협형 농촌살기 시범마을'을 조성합니다.</p>
+                    
+                    <h3>🤝 이웃사촌 멘토링</h3>
+                    <p>도시민과 조합원이 멘토-멘티 관계를 맺어 정착을 돕습니다.</p>
+                `,
+                quiz: [{q: "도시 4일, 농촌 3일 라이프스타일을 뜻하는 말은?", a: "4도 3촌", o: ["4도 3촌", "5도 2촌", "7도 0촌"]}, {q: "약 1년간 농촌에 살며 기술을 배우는 프로그램은?", a: "농촌에서 살아보기", o: ["농촌에서 살아보기", "농촌에서 놀기", "농촌 구경하기"]}] 
+            },
+            { 
+                id: 9, 
+                title: "9. 미래농업인 육성", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 청년농업인 체계적 육성 및 모델 발굴
+                    </div>
+                    <h3>📈 단계별 육성 지원</h3>
+                    <p>청년농업인을 <strong>입문 → 중급 → 고급</strong> 단계별로 나누어 교육, 자금, 판로, 컨설팅을 종합적으로 지원합니다.</p>
+                    
+                    <h3>🏆 성공 모델 확산</h3>
+                    <p>'영농 성공사례 경연대회'를 개최하고, 혁신적인 청년 농업인에게 <strong>'새로운 청년농업인상'</strong>을 수여하여 우수 모델을 발굴합니다.</p>
+                `,
+                quiz: [{q: "혁신적 청년 농업인에게 수여하는 상은?", a: "새로운 청년농업인상", o: ["새로운 청년농업인상", "중년 농업인상", "초보 농업인상"]}, {q: "청년농업인 육성은 입문-중급-고급 단계별로 이루어진다?", a: "O", o: ["O", "X"]}] 
+            },
+            { 
+                id: 10, 
+                title: "10. 농촌재생", 
+                content: `
+                    <div class="highlight-box">
+                        <strong>핵심 목표:</strong> 농촌 공간 및 정주 여건 개선
+                    </div>
+                    <h3>🏠 사랑의 집 고치기</h3>
+                    <p>소년소녀 가장, 독거노인 등 <strong>취약 농가</strong>의 주거 환경을 개선합니다. 기업체와 합동 봉사로 진행됩니다.</p>
+                    
+                    <h3>🍲 마을 공동식당 개선</h3>
+                    <p>화재 위험이 있는 노후된 공동식당을 리모델링하여 어르신들에게 안전한 식사 공간을 제공합니다.</p>
+                    
+                    <h3>🚚 찾아가는 이동장터</h3>
+                    <p>식품 구매가 어려운 지역(식품사막)을 위해 생필품을 싣고 찾아가는 이동형 장터를 운영합니다.</p>
+                `,
+                quiz: [{q: "취약 농가 주거 환경 개선 사업 명칭은?", a: "사랑의 집 고치기", o: ["사랑의 집 고치기", "사랑의 밥차", "사랑의 연탄"]}, {q: "고령 어르신 급식과 화재 예방을 위해 개선하는 시설은?", a: "마을 공동식당", o: ["마을 공동식당", "PC방", "노래방"]}] 
+            }
+        ];
+
+        // ==========================================
+        // 앱 로직
+        // ==========================================
+        const app = document.getElementById('app');
+        let currentUser = JSON.parse(localStorage.getItem('nongshim_user')) || null;
+        let myStamps = JSON.parse(localStorage.getItem('nongshim_stamps')) || [];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const missionParam = urlParams.get('mission');
+
+        if (!currentUser) {
+            renderLogin();
+        } else {
+            if (missionParam) {
+                const mId = parseInt(missionParam);
+                if (mId >= 1 && mId <= 10) {
+                    setTimeout(() => startLearning(mId), 100);
+                } else {
+                    renderHome();
+                }
+            } else {
+                renderHome();
+            }
+        }
+
+        // --- 1. 로그인 ---
+        function renderLogin() {
+            app.innerHTML = `
+                <div class="flex-1 flex flex-col justify-center px-8 bg-white min-h-screen">
+                    <div class="text-center mb-10">
+                        <img src="logo.png" alt="농협 로고" class="mx-auto mb-6 h-12 animate-bounce">
+                        <h1 class="text-3xl font-bold text-gray-900 mb-2 tracking-tight">도전!<br>농심천심 마스터</h1>
+                        <p class="text-gray-500">교육원 곳곳에 숨겨진 QR을 찾아라!</p>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">이름</label>
+                            <input type="text" id="inputName" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="이름 입력">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">핸드폰 번호</label>
+                            <input type="tel" id="inputPhone" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="뒷 4자리">
+                        </div>
+                        <button onclick="handleLogin()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform active:scale-95 text-lg mt-4">
+                            🚀 투어 시작하기
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleLogin() {
+            const name = document.getElementById('inputName').value.trim();
+            const phone = document.getElementById('inputPhone').value.trim();
+            if (!name || !phone) return alert('정보를 입력해주세요.');
+            
+            currentUser = { name, phone };
+            localStorage.setItem('nongshim_user', JSON.stringify(currentUser));
+            
+            if (missionParam) {
+                const mId = parseInt(missionParam);
+                if(mId >= 1 && mId <= 10) { startLearning(mId); return; }
+            }
+            renderHome();
+        }
+
+        function handleLogout() {
+            if(confirm("로그아웃 하시겠습니까?")) {
+                localStorage.removeItem('nongshim_user');
+                currentUser = null;
+                window.location.href = window.location.pathname; 
+            }
+        }
+
+        // --- 2. 홈 화면 ---
+        function renderHome() {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            const progress = myStamps.length;
+            const percentage = (progress / 10) * 100;
+            
+            app.innerHTML = `
+                <div class="bg-white px-6 py-5 sticky top-0 z-20 border-b border-gray-100 shadow-sm flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">👋 ${currentUser.name}님</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 transition-all duration-500" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="text-xs text-green-600 font-bold">${progress}/10</span>
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" class="text-xs text-gray-400 border px-2 py-1 rounded">로그아웃</button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto bg-gray-50 px-6 py-6">
+                    
+                    <div class="bg-white rounded-2xl shadow-sm p-3 mb-6 border border-gray-100 text-center">
+                        <h3 class="text-lg font-bold mb-3 text-gray-800">🗺️ 교육원 안내도</h3>
+                        
+                        <div class="w-full overflow-hidden mb-4">
+                             <img src="map.png" alt="지도" class="w-full h-auto object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <span style="display:none;" class="text-gray-400 py-10 block">map.png 이미지를 넣어주세요.</span>
+                        </div>
+
+                        <div class="bg-blue-50 border-2 border-dashed border-blue-300 rounded-xl p-3.5 text-sm text-blue-800 leading-relaxed break-keep shadow-sm">
+                            ☕ <strong>교육원</strong>을 산책하며 QR코드를 찾아보세요.<br>
+                            QR에 숨겨져 있는 <strong>'농심획득' 스탬프</strong>를 모두 획득하신 분들에게 선착순으로 <strong>커피쿠폰</strong>을 드려요.
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4">
+                        <button onclick="renderStampBook()" class="bg-gray-800 text-white p-5 rounded-2xl shadow-lg flex items-center justify-center gap-3 transition transform active:scale-95">
+                            <span class="text-2xl">🏆</span>
+                            <div class="text-left">
+                                <div class="font-bold text-lg">내 스탬프북</div>
+                                <div class="text-sm opacity-90">획득 현황 확인하기</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- 3. 스탬프북 ---
+        function renderStampBook() {
+            let cardsHtml = '';
+            MISSIONS.forEach(m => {
+                const isCleared = myStamps.includes(m.id);
+                const stampHtml = isCleared ? `
+                    <div class="stamp-overlay">
+                        <span class="stamp-text-main">농심<br>천심</span>
+                    </div>
+                ` : '';
+                
+                cardsHtml += `
+                    <div class="relative bg-white rounded-2xl p-3 shadow-sm border border-gray-100 min-h-[120px] flex flex-col justify-between ${isCleared ? 'border-red-100 bg-red-50' : ''}" onclick="revisitMission(${m.id})">
+                        ${stampHtml}
+                        <div class="${isCleared ? '' : 'grayscale'} transition-all">
+                            <span class="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Mission ${m.id}</span>
+                            <h4 class="font-bold text-gray-800 mt-2 text-sm break-keep leading-tight">${m.title}</h4>
+                        </div>
+                    </div>
+                `;
+            });
+
+            app.innerHTML = `
+                <div class="bg-white px-4 py-4 border-b flex items-center sticky top-0 z-20 shadow-sm">
+                    <button onclick="renderHome()" class="text-gray-500 mr-4 text-2xl">⬅️</button>
+                    <h2 class="font-bold text-lg flex-1 text-center pr-8">나의 스탬프북</h2>
+                </div>
+                <div class="p-4 grid grid-cols-2 gap-3 bg-gray-50 flex-1 overflow-y-auto">
+                    ${cardsHtml}
+                    <div class="col-span-2 text-center text-xs text-gray-400 mt-4">
+                        * 완료된 카드를 누르면 학습 내용을 다시 볼 수 있습니다.
+                    </div>
+                </div>
+            `;
+        }
+        
+        // [핵심 수정] 스탬프북 클릭 시 잠금 로직 적용
+        function revisitMission(id) {
+            if (myStamps.includes(id)) {
+                // 이미 깬 미션: 복습 허용
+                if(confirm("이 미션의 학습 내용을 다시 보시겠습니까?")) {
+                    startLearning(id);
+                }
+            } else {
+                // 안 깬 미션: 접근 차단 (경고창)
+                alert("🚫 잠겨있는 미션입니다.\n현장에서 QR코드를 찾아 스캔해주세요!");
+            }
+        }
+
+        // --- 4. 학습 화면 ---
+        function startLearning(missionId) {
+            const mission = MISSIONS.find(m => m.id === missionId);
+            
+            app.innerHTML = `
+                <div class="bg-white px-4 py-4 border-b flex items-center sticky top-0 z-20 shadow-sm">
+                    <button onclick="renderHome()" class="text-gray-500 mr-4 text-2xl">⬅️</button>
+                    <h2 class="font-bold text-lg flex-1 text-center pr-8 truncate">${mission.title}</h2>
+                </div>
+                <div class="flex-1 overflow-y-auto bg-white p-6 pb-24">
+                    <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold mb-4">학습 단계</span>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-6">내용을 읽고<br>퀴즈에 도전하세요! 📖</h1>
+                    
+                    <div class="learning-content text-gray-700 leading-relaxed">
+                        ${mission.content} 
+                    </div>
+                </div>
+                <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-[480px] mx-auto">
+                    <button onclick="renderQuiz(${missionId})" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-green-700 transition transform active:scale-95 flex items-center justify-center gap-2">
+                        퀴즈 풀러 가기 👉
+                    </button>
+                </div>
+            `;
+        }
+
+        // --- 5. 퀴즈 화면 ---
+        function renderQuiz(missionId) {
+            if (myStamps.includes(missionId)) {
+                if(!confirm("이미 성공한 미션입니다. 그래도 다시 푸시겠습니까?")) {
+                    renderHome(); return;
+                }
+            }
+
+            const mission = MISSIONS.find(m => m.id === missionId);
+            const randomQuestions = [...mission.quiz].sort(() => 0.5 - Math.random()).slice(0, 2);
+
+            let quizHtml = randomQuestions.map((q, index) => {
+                const optionsHtml = q.o.map(opt => `
+                    <div>
+                        <input type="radio" name="q${index}" value="${opt}" id="q${index}_${opt}" class="option-input">
+                        <label for="q${index}_${opt}" class="option-label text-sm">${opt}</label>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 quiz-block" data-answer="${q.a}">
+                        <div class="font-bold text-lg mb-4 text-gray-800">
+                            <span class="text-green-600 mr-1">Q${index+1}.</span> ${q.q}
+                        </div>
+                        <div class="space-y-2">${optionsHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            app.innerHTML = `
+                <div class="bg-white px-4 py-4 border-b flex items-center sticky top-0 z-20 shadow-sm">
+                    <button onclick="startLearning(${missionId})" class="text-gray-500 mr-4 text-2xl">⬅️</button>
+                    <h2 class="font-bold text-lg flex-1 text-center pr-8 truncate">퀴즈 도전!</h2>
+                </div>
+                <div class="p-5 bg-gray-50 flex-1 overflow-y-auto pb-24">
+                    <div class="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm mb-6 flex items-start gap-2">
+                        <span>💡</span>
+                        <span>방금 읽은 내용을 바탕으로<br><strong>2문제</strong>를 모두 맞혀주세요!</span>
+                    </div>
+                    
+                    <form id="quizForm">${quizHtml}</form>
+                </div>
+                <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-[480px] mx-auto">
+                    <button onclick="submitQuiz(${missionId})" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-green-700 transition">
+                        정답 제출하기 🚀
+                    </button>
+                </div>
+            `;
+        }
+
+        function submitQuiz(missionId) {
+            const form = document.getElementById('quizForm');
+            const quizBlocks = form.querySelectorAll('.quiz-block');
+            let correctCount = 0;
+            let allAnswered = true;
+
+            quizBlocks.forEach((block, index) => {
+                const selected = block.querySelector(`input[name="q${index}"]:checked`);
+                if (!selected) { allAnswered = false; return; }
+                if (selected.value === block.dataset.answer) correctCount++;
+            });
+
+            if (!allAnswered) return alert("모든 문제의 정답을 선택해주세요!");
+
+            if (correctCount === quizBlocks.length) { 
+                if (!myStamps.includes(missionId)) {
+                    myStamps.push(missionId);
+                    localStorage.setItem('nongshim_stamps', JSON.stringify(myStamps));
+                }
+                
+                app.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center bg-green-500 text-white text-center p-8 min-h-screen">
+                        <div class="big-stamp-circle mb-8 animate-bounce">
+                            <span class="big-stamp-text">농심<br>천심</span>
+                        </div>
+                        <h2 class="text-3xl font-bold mb-2">축하합니다!</h2>
+                        <p class="text-xl opacity-90 mb-8 font-medium">스탬프를 획득했습니다!</p>
+                        <button onclick="renderStampBook()" class="bg-white text-green-600 font-bold px-10 py-4 rounded-full shadow-lg text-lg transition transform active:scale-95">
+                            내 스탬프북 확인
+                        </button>
+                    </div>
+                `;
+            } else {
+                alert(`오답이 있습니다! (${correctCount}/${quizBlocks.length} 정답)\n학습 내용을 다시 읽어보세요!`);
+                startLearning(missionId);
+            }
+        }
+    </script>
+</body>
+</html>
