@@ -215,23 +215,33 @@
             app.innerHTML = `<div class="bg-white px-4 py-4 border-b flex items-center sticky top-0 z-20 shadow-sm"><button onclick="startLearning(${missionId})" class="text-gray-500 mr-4 text-2xl">⬅️</button><h2 class="font-bold text-lg flex-1 text-center pr-8 truncate">퀴즈 도전!</h2></div><div class="p-5 bg-gray-50 flex-1 overflow-y-auto pb-24"><div class="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm mb-6 flex items-start gap-2"><span>💡</span><span>방금 읽은 내용을 바탕으로<br><strong>2문제</strong>를 모두 맞혀주세요!</span></div><form id="quizForm">${quizHtml}</form></div><div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-[480px] mx-auto"><button onclick="submitQuiz(${missionId})" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-green-700 transition">정답 제출하기 🚀</button></div>`;
         }
 
-        function submitQuiz(missionId) {
+function submitQuiz(missionId) {
             const form = document.getElementById('quizForm');
             const quizBlocks = form.querySelectorAll('.quiz-block');
             let correctCount = 0; let allAnswered = true;
             quizBlocks.forEach((block, index) => { const selected = block.querySelector(`input[name="q${index}"]:checked`); if (!selected) { allAnswered = false; return; } if (selected.value === block.dataset.answer) correctCount++; });
             if (!allAnswered) return alert("모든 문제의 정답을 선택해주세요!");
             
-            // [핵심 수정: 정답 시 분기 처리]
             if (correctCount === quizBlocks.length) { 
-                if (!myStamps.includes(missionId)) { myStamps.push(missionId); localStorage.setItem('nongshim_stamps', JSON.stringify(myStamps)); }
+                // [🔥강력 수정] 저장된 도장 목록을 최신 상태로 다시 불러옴 (안전장치)
+                let savedStamps = JSON.parse(localStorage.getItem('nongshim_stamps')) || [];
+                
+                // 도장 목록에 현재 미션이 없으면 추가
+                if (!savedStamps.includes(missionId)) { 
+                    savedStamps.push(missionId); 
+                    localStorage.setItem('nongshim_stamps', JSON.stringify(savedStamps)); 
+                    myStamps = savedStamps; // 화면 표시용 변수도 즉시 동기화
+                } else {
+                    // 이미 있는 경우에도 화면 변수 동기화
+                    myStamps = savedStamps;
+                }
                 
                 // 10개 다 모았으면 -> 인증서 화면
                 if (myStamps.length >= 10) {
                     if (!completedTime) { const now = new Date(); localStorage.setItem('nongshim_completed_time', now.toLocaleString('ko-KR')); completedTime = now.toLocaleString('ko-KR'); }
                     renderSuccessPage(true);
                 } else {
-                    // 아직 덜 모았으면 -> 미션 성공 축하 화면 (부활!)
+                    // 아직 덜 모았으면 -> 미션 성공 축하 화면
                     renderMissionSuccess();
                 }
             } else { alert(`오답이 있습니다! (${correctCount}/${quizBlocks.length} 정답)\n학습 내용을 다시 읽어보세요!`); startLearning(missionId); }
